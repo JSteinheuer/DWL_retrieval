@@ -49,14 +49,16 @@ f_and_f = files_and_folders_of_dir(directory=dir_l1)
 path_folders_in = f_and_f['folders']
 nc_files_in = f_and_f['files']
 for i in range(len(nc_files_in) - 1, -1, -1):
-    if '_l1_' not in nc_files_in[i]:
+    if '_l1_' not in nc_files_in[i]:  # wrong level
         del path_folders_in[i]
         del nc_files_in[i]
-    elif 'DWL_l1_QC' in path_folders_in[i]:  # already quality checked
+    elif 'level_1_js' in path_folders_in[i]:  # already quality checked
         del path_folders_in[i]
         del nc_files_in[i]
 
-path_folders_out = [f.replace('DWL_l1', 'DWL_l1_QC') for f in path_folders_in]
+path_folders_out = [f.replace(
+    'level_1_mk', 'level_1_js').replace(
+    'level_1_rl', 'level_1_js') for f in path_folders_in]
 pool = mp.Pool(np.min((mp.cpu_count() - 1, max_cpu)))  # parallel on
 pool.starmap_async(wrap_flag_qdv_of_l1,
                    [(nc_file_in, path_folder_in, path_folder_out,
@@ -82,7 +84,10 @@ for i in range(len(nc_files_in) - 1, -1, -1):
     if '_l1_' not in nc_files_in[i]:  # wrong level
         del path_folders_in[i]
         del nc_files_in[i]
-    elif '/DWL_l1/' in path_folders_in[i]:  # not quality checked
+    elif '/level_1_rl/' in path_folders_in[i]:  # not quality checked
+        del path_folders_in[i]
+        del nc_files_in[i]
+    elif '/level_1_mk/' in path_folders_in[i]:  # not quality checked
         del path_folders_in[i]
         del nc_files_in[i]
 
@@ -96,7 +101,7 @@ circ = False
 lowest_frac = 0.5
 highest_allowed_sigma = 3
 n_ef = 12
-path_folders_out = [f.replace('/DWL_l1_QC/', '/DWL_l2/uvw-') +
+path_folders_out = [f.replace('/level_1_js/', '/level_2_js/uvw-') +
                     str(duration) + 's/' for f in path_folders_in]
 pool = mp.Pool(np.min((mp.cpu_count() - 1, max_cpu)))  # parallel on
 pool.starmap_async(uvw3_retrievals,
@@ -118,7 +123,7 @@ circ = True
 lowest_frac = 0.66
 highest_allowed_sigma = 1
 n_ef = 2
-path_folders_out = [f.replace('/DWL_l1_QC/', '/DWL_l2/uvw-circ/')
+path_folders_out = [f.replace('/level_1_js/', '/level_2_js/uvw-circ/')
                     for f in path_folders_in]
 pool = mp.Pool(np.min((mp.cpu_count() - 1, max_cpu)))  # parallel on
 pool.starmap_async(uvw3_retrievals,
@@ -139,7 +144,7 @@ heights_fix = np.array([90.3])  # sonic anemometer height to interpolate
 quality_control_snr = True  # classic
 check_exist = True
 iteration_stopping_sigma = 999  # dummy
-dir_l1_qc = getcwd() + '/data/CSM2/DWL_l1_QC/'
+dir_l1_qc = getcwd() + '/data/fesstval_2020/wl_177/CSM2/level_1_js/'
 f_and_f = files_and_folders_of_dir(directory=dir_l1_qc)
 path_folders_in = f_and_f['folders']
 nc_files_in = f_and_f['files']
@@ -156,7 +161,7 @@ circ = False
 lowest_frac = 0.5
 highest_allowed_sigma = 999
 n_ef = 12
-path_folders_out = [f.replace('/DWL_l1_QC/', '/DWL_l2_SNR/uvw-') +
+path_folders_out = [f.replace('/level_1_js/', '/level_2_js_SNR/uvw-') +
                     str(duration) + 's/' for f in path_folders_in]
 pool = mp.Pool(np.min((mp.cpu_count() - 1, max_cpu)))  # parallel on
 pool.starmap_async(uvw3_retrievals,
@@ -173,7 +178,7 @@ circ = True
 lowest_frac = 0.66
 highest_allowed_sigma = 999
 n_ef = 2
-path_folders_out = [f.replace('/DWL_l1_QC/', '/DWL_l2_SNR/uvw-circ/')
+path_folders_out = [f.replace('/level_1_js/', '/level_2_js_SNR/uvw-circ/')
                     for f in path_folders_in]
 pool = mp.Pool(np.min((mp.cpu_count() - 1, max_cpu)))  # parallel on
 pool.starmap_async(uvw3_retrievals,
@@ -235,7 +240,7 @@ for i in range(len(nc_files_in) - 1, -1, -1):
         del path_folders_in[i]
         del nc_files_in[i]
 
-path_folders_out = [f.replace('DWL_l2', 'quicklooks') for f in path_folders_in]
+path_folders_out = [f.replace('level_2', 'quicklooks') for f in path_folders_in]
 for nc_file_in, path_folder_in, path_folder_out in zip(nc_files_in,
                                                        path_folders_in,
                                                        path_folders_out):

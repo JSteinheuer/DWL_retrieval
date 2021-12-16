@@ -1,5 +1,5 @@
 # DWL-retrieval
-This repository contains the code to calculate 10 minutes mean wind and wind  gust peaks from daily Doppler wind lidar files (netcdfs in SAMD convention)  as described in
+This repository contains the code to calculate 10 minutes mean wind and wind gust peaks from daily Doppler wind lidar files (netcdfs in SAMD convention) as described in
 
 **Steinheuer, Detring, Beyrich, Löhnert, Friederichs, and Fiedler (2021), A new scanning scheme and flexible retrieval to derive both mean winds and gusts from Doppler lidar measurements, Atmos. Meas. Tech. DOI: TBD**
 
@@ -15,6 +15,8 @@ The repository includes the dependencies in "requirements.txt".
 **Additional features**:
 A simple quicklook plotting routine with is provided in _DWL_retrieval.py_
 
+_version: 1.0_
 
+_December 16, 2021_
 
 This program is a free software distributed under the terms of the GNU General Public License as published by the Free Software Foundation, version 3 (GNU-GPLv3). You can redistribute and/or modify by citing the mentioned publication, but WITHOUT ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
