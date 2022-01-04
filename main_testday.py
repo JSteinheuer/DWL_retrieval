@@ -2,27 +2,29 @@
 """
 This code is used to calculate wind gust peaks as described in:
 
-Steinheuer, Detring, Beyrich, Löhnert, Friederichs, and Fiedler (2021):
-A new scanning scheme and flexible retrieval to derive both mean winds and
-gusts from Doppler lidar measurements, Atmos. Meas. Tech
+Steinheuer, Detring, Beyrich, Löhnert, Friederichs, and Fiedler
+(2021): A new scanning scheme and flexible retrieval to derive both
+mean winds and gusts from Doppler lidar measurements,
+Atmos. Meas. Tech
 DOI:
 
-This program is a free software distributed under the terms of the GNU General
-Public License as published by the Free Software Foundation, version 3
-(GNU-GPLv3).
+This program is a free software distributed under the terms of the GNU
+General Public License as published by the Free Software Foundation,
+version 3 (GNU-GPLv3).
 
-You can redistribute and/or modify by citing the mentioned publication, but
-WITHOUT ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or
-FITNESS FOR A PARTICULAR PURPOSE.
+You can redistribute and/or modify by citing the mentioned publication,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 For a description of the methods, refer to Steinheuer et al. (2021).
+To test the script with an example day use main_testday.py
 """
 
 
-################################################################################
-# Julian Steinheuer; November 2021                                             #
-# main_testday.py: rund DWL_retrieval for test day 20190929                    #
-################################################################################
+########################################################################
+# Julian Steinheuer; November 2021                                     #
+# main_testday.py: run DWL_retrieval for test day 20190929             #
+########################################################################
 
 import numpy as np
 from os import getcwd
@@ -38,65 +40,69 @@ from DWL_retrieval import \
 
 max_cpu = 12  # how many kernels to use?
 
-################################################################################
-# STEP A: Quality check                                                        #
-################################################################################
+########################################################################
+# STEP A: Quality check                                                #
+########################################################################
 
 wrap_flag_qdv_of_l1(nc_file_in='tub_dlidVAD143_l1_any_v00_20190929000000.nc',
                     path_folder_in=getcwd() + '/data/24Beam_testday/DWL_l1/',
+                    path_folder_out=getcwd() +
+                    '/data/24Beam_testday/DWL_l1_QC/',
                     snr_threshold=-18.2, beta_threshold=1e-4,
                     check_exist=True, weight_starting_azimuth=0.6)
 
-################################################################################
-# STEP B: Retrieval                                                            #
-################################################################################
-# STEP B (600s): For all level 1 files in all folders that are in dir_l1_qc    #
-#                and its subfolders, if the files are of level 1, do!          #
-################################################################################
+########################################################################
+# STEP B: Retrieval                                                    #
+########################################################################
+# STEP B (600s): For all level 1 files in all folders that are in      #
+#                dir_l1_qc and its subfolders, if the files are of     #
+#                level 1, do!                                          #
+########################################################################
 
 uvw3_retrievals(nc_file_in='tub_dlidVAD143_l1_any_v01_20190929000000.nc',
                 path_folder_in=getcwd() + '/data/24Beam_testday/DWL_l1_QC/',
                 path_folder_out=getcwd() +
-                                '/data/24Beam_testday/DWL_l2/uvw-600s/',
+                '/data/24Beam_testday/DWL_l2/uvw-600s/',
                 duration=600, circ=False, heights_fix=np.array([90.3]),
                 quality_control_snr=False, check_exist=True,
                 lowest_frac=0.5, highest_allowed_sigma=3,
                 iteration_stopping_sigma=1, n_ef=12)
 
-################################################################################
-# STEP B (circ): For all level 1 files in all folders that are in dir_l1_qc    #
-#                and its subfolders, if the files are of level 1, do!          #
-################################################################################
+########################################################################
+# STEP B (circ): For all level 1 files in all folders that are in      #
+#                dir_l1_qc and its subfolders, if the files are of     #
+#                level 1, do!                                          #
+########################################################################
 
 uvw3_retrievals(nc_file_in='tub_dlidVAD143_l1_any_v01_20190929000000.nc',
                 path_folder_in=getcwd() + '/data/24Beam_testday/DWL_l1_QC/',
                 path_folder_out=getcwd() +
-                                '/data/24Beam_testday/DWL_l2/uvw-circ/',
+                '/data/24Beam_testday/DWL_l2/uvw-circ/',
                 duration=np.nan, circ=True, heights_fix=np.array([90.3]),
                 quality_control_snr=False, check_exist=True,
                 lowest_frac=0.66, highest_allowed_sigma=1,
                 iteration_stopping_sigma=1, n_ef=2)
 
-################################################################################
-# STEP C: Wind product                                                         #
-################################################################################
+########################################################################
+# STEP C: Wind product                                                 #
+########################################################################
 
-wind_and_gust_netcdf(nc_file_in_mean=
-                     'tub_dlidVAD143_l2_uvw-600s_v01_20190929000000.nc',
+wind_and_gust_netcdf(nc_file_in_mean='tub_dlidVAD143_l2_uvw'
+                                     '-600s_v01_20190929000000.nc',
                      path_folder_in_mean=getcwd() +
-                                         '/data/24Beam_testday/DWL_l2/uvw-600s/',
-                     nc_file_in_circ=
-                     'tub_dlidVAD143_l2_uvw-circ_v01_20190929000000.nc',
+                     '/data/24Beam_testday/DWL_l2/uvw-600s/',
+                     nc_file_in_circ='tub_dlidVAD143_l2_uvw'
+                                     '-circ_v01_20190929000000.nc',
                      path_folder_in_circ=getcwd() +
-                                         '/data/24Beam_testday/DWL_l2/uvw-circ/',
+                     '/data/24Beam_testday/DWL_l2/uvw-circ/',
                      path_folder_out=getcwd() +
-                                     '/data/24Beam_testday/DWL_l2/uvw-gust/',
+                     '/data/24Beam_testday/DWL_l2/uvw-gust/',
                      circulations_fraction=0.5,
                      check_exist=True, max_out=1)
 
-################################################################################
-# STEP D: Quicklooks                                                           #
-################################################################################
+########################################################################
+# STEP D: Quicklooks                                                   #
+########################################################################
 
 dir_l2 = getcwd() + '/data/24Beam_testday/DWL_l2'
 f_and_f = files_and_folders_of_dir(directory=dir_l2)

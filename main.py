@@ -2,28 +2,28 @@
 """
 This code is used to calculate wind gust peaks as described in:
 
-Steinheuer, Detring, Beyrich, Löhnert, Friederichs, and Fiedler (2021):
-A new scanning scheme and flexible retrieval to derive both mean winds and
-gusts from Doppler lidar measurements, Atmos. Meas. Tech
+Steinheuer, Detring, Beyrich, Löhnert, Friederichs, and Fiedler
+(2021): A new scanning scheme and flexible retrieval to derive both
+mean winds and gusts from Doppler lidar measurements,
+Atmos. Meas. Tech
 DOI:
 
-This program is a free software distributed under the terms of the GNU General
-Public License as published by the Free Software Foundation, version 3
-(GNU-GPLv3).
+This program is a free software distributed under the terms of the GNU
+General Public License as published by the Free Software Foundation,
+version 3 (GNU-GPLv3).
 
-You can redistribute and/or modify by citing the mentioned publication, but
-WITHOUT ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or
-FITNESS FOR A PARTICULAR PURPOSE.
+You can redistribute and/or modify by citing the mentioned publication,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 For a description of the methods, refer to Steinheuer et al. (2021).
 To test the script with an example day use main_testday.py
 """
 
-
-################################################################################
-# Julian Steinheuer; November 2021                                             #
-# main.py: rund DWL_retrieval for paper                                        #
-################################################################################
+########################################################################
+# Julian Steinheuer; November 2021                                     #
+# main.py: run DWL_retrieval for paper                                 #
+########################################################################
 
 import numpy as np
 from os import getcwd
@@ -37,12 +37,12 @@ from DWL_retrieval import \
     wind_and_gust_netcdf
 from DWL_retrieval import \
     lidar_quicklook
+
 max_cpu = 12  # how many kernels to use?
 
-
-################################################################################
-# STEP A: Quality check                                                        #
-################################################################################
+########################################################################
+# STEP A: Quality check                                                #
+########################################################################
 
 dir_l1 = getcwd() + '/data/'
 f_and_f = files_and_folders_of_dir(directory=dir_l1)
@@ -67,10 +67,9 @@ pool.starmap_async(wrap_flag_qdv_of_l1,
                     zip(nc_files_in, path_folders_in, path_folders_out)]).get()
 pool.close()  # parallel off
 
-
-################################################################################
-# STEP B: Retrieval                                                            #
-################################################################################
+########################################################################
+# STEP B: Retrieval                                                    #
+########################################################################
 
 heights_fix = np.array([90.3])  # sonic anemometer height to interpolate
 quality_control_snr = False  # not necessary with this retrieval (but possible)
@@ -91,10 +90,11 @@ for i in range(len(nc_files_in) - 1, -1, -1):
         del path_folders_in[i]
         del nc_files_in[i]
 
-################################################################################
-# STEP B (600s): For all level 1 files in all folders that are in dir_l1_qc    #
-#                and its subfolders, if the files are of level 1, do!          #
-################################################################################
+########################################################################
+# STEP B (600s): For all level 1 files in all folders that are in      #
+#                dir_l1_qc and its subfolders, if the files are of     #
+#                level 1, do!                                          #
+########################################################################
 
 duration = 600
 circ = False
@@ -113,10 +113,11 @@ pool.starmap_async(uvw3_retrievals,
                     zip(nc_files_in, path_folders_in, path_folders_out)]).get()
 pool.close()  # parallel off
 
-################################################################################
-# STEP B (circ): For all level 1 files in all folders that are in dir_l1_qc    #
-#                and its subfolders, if the files are of level 1, do!          #
-################################################################################
+########################################################################
+# STEP B (circ): For all level 1 files in all folders that are in      #
+#                dir_l1_qc and its subfolders, if the files are of     #
+#                level 1, do!                                          #
+########################################################################
 
 duration = np.nan
 circ = True
@@ -135,10 +136,11 @@ pool.starmap_async(uvw3_retrievals,
                     zip(nc_files_in, path_folders_in, path_folders_out)]).get()
 pool.close()  # parallel off
 
-################################################################################
-# STEP B (classic): For Sabine level 1 files process data without new          #
-#                   retrieval (so with quality check and no sigma thresholds). #
-################################################################################
+########################################################################
+# STEP B (classic): For Sabine level 1 files process data without new  #
+#                   retrieval (so with quality check and no sigma      #
+#                   thresholds).                                       #
+########################################################################
 
 heights_fix = np.array([90.3])  # sonic anemometer height to interpolate
 quality_control_snr = True  # classic
@@ -190,9 +192,9 @@ pool.starmap_async(uvw3_retrievals,
                     zip(nc_files_in, path_folders_in, path_folders_out)]).get()
 pool.close()  # parallel off
 
-################################################################################
-# STEP C: Wind product                                                         #
-################################################################################
+########################################################################
+# STEP C: Wind product                                                 #
+########################################################################
 
 dir_l2 = getcwd() + '/data/'
 f_and_f = files_and_folders_of_dir(directory=dir_l2)
@@ -216,17 +218,16 @@ pool.starmap_async(wind_and_gust_netcdf,
                    [(nc_file_in_mean, path_folder_in_mean,
                      nc_file_in_circ, path_folder_in_circ,
                      path_folder_out, 0.5, np.nan, True)
-                    for nc_file_in_mean, path_folder_in_mean,
-                        nc_file_in_circ, path_folder_in_circ,
-                        path_folder_out in
+                    for nc_file_in_mean, path_folder_in_mean, nc_file_in_circ,
+                    path_folder_in_circ, path_folder_out in
                     zip(nc_files_in_mean, path_folders_in_mean,
                         nc_files_in_circ, path_folders_in_circ,
                         path_folders_out)]).get()
 pool.close()  # parallel off
 
-################################################################################
-# STEP D: Quicklooks                                                           #
-################################################################################
+########################################################################
+# STEP D: Quicklooks                                                   #
+########################################################################
 
 dir_l2 = getcwd() + '/data/'
 f_and_f = files_and_folders_of_dir(directory=dir_l2)
@@ -240,17 +241,17 @@ for i in range(len(nc_files_in) - 1, -1, -1):
         del path_folders_in[i]
         del nc_files_in[i]
 
-path_folders_out = [f.replace('level_2', 'quicklooks') for f in path_folders_in]
+path_folders_out = [f.replace('level_2', 'quicklooks')
+                    for f in path_folders_in]
 for nc_file_in, path_folder_in, path_folder_out in zip(nc_files_in,
                                                        path_folders_in,
                                                        path_folders_out):
     if nc_file_in.split('_')[-3][0:8] == 'uvw-gust':
         lidar_quicklook(nc_file_in, path_folder_in,
-                        path_folder_out.replace('uvw-gust','uvw-gust-peak'),
+                        path_folder_out.replace('uvw-gust', 'uvw-gust-peak'),
                         gust=True, name_prefix='quicklook_gust_peak_')
         # lidar_quicklook(nc_file_in, path_folder_in,
         #                 path_folder_out.replace('uvw-gust','uvw-gust-peak'),
         #                 gust=False, name_prefix='quicklook_mean-wind_')
     else:
         lidar_quicklook(nc_file_in, path_folder_in, path_folder_out)
-

@@ -2,27 +2,28 @@
 """
 This code is used to calculate wind gust peaks as described in:
 
-Steinheuer, Detring, Beyrich, Löhnert, Friederichs, and Fiedler (2021):
-A new scanning scheme and flexible retrieval to derive both mean winds and
-gusts from Doppler lidar measurements, Atmos. Meas. Tech
+Steinheuer, Detring, Beyrich, Löhnert, Friederichs, and Fiedler
+(2021): A new scanning scheme and flexible retrieval to derive both
+mean winds and gusts from Doppler lidar measurements,
+Atmos. Meas. Tech
 DOI:
 
-This program is a free software distributed under the terms of the GNU General
-Public License as published by the Free Software Foundation, version 3
-(GNU-GPLv3).
+This program is a free software distributed under the terms of the GNU
+General Public License as published by the Free Software Foundation,
+version 3 (GNU-GPLv3).
 
-You can redistribute and/or modify by citing the mentioned publication, but
-WITHOUT ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or
-FITNESS FOR A PARTICULAR PURPOSE.
+You can redistribute and/or modify by citing the mentioned publication,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 For a description of the methods, refer to Steinheuer et al. (2021).
+To test the script with an example day use main_testday.py
 """
 
-
-################################################################################
-# Julian Steinheuer; November 2021                                             #
-# DWL_retrieval.py                                                             #
-################################################################################
+########################################################################
+# Julian Steinheuer; November 2021                                     #
+# DWL_retrieval.py                                                     #
+########################################################################
 
 import numpy as np
 import netCDF4 as nc
@@ -37,14 +38,15 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 
 
-################################################################################
-# STEP A: Quality check                                                        #
-#                                                                              #
-# Process lidar-netcdf's l1. The qdv value is set on 0 if SNR (given as        #
-# intensity = 1 + SNR) is not above certain (e.g SNR>-18) threshold.           #
-# Further a beta threshold could be set for cloud detection.                   #
-# For quick scanning modi the azimuth tends to shift which can be repaired.    #
-################################################################################
+########################################################################
+# STEP A: Quality check                                                #
+#                                                                      #
+# Process lidar-netcdf's l1. The qdv value is set on 0 if SNR (given   #
+# as intensity = 1 + SNR) is not above certain (e.g SNR>-18)           #
+# threshold. Further a beta threshold could be set for cloud           #
+# detection. For quick scanning modi the azimuth tends to shift which  #
+# can be repaired.                                                     #
+########################################################################
 
 
 def files_and_folders_of_dir(directory, not_nc=False, tmp=False, error=False):
@@ -281,8 +283,8 @@ def flag_qdv_of_l1(nc_file_in, path_folder_in='', path_folder_out=None,
         # global attributes to overwrite:
         nc_lidar.History = 'qdv is threshold based quality flagged: values ' \
                            'are updated on 0 if SNR is below ' + \
-                           str(snr_threshold) + 'and beta higher than 1e-4 ' + \
-                           'm^-1 sr^-1 (or behind such value), ' + \
+                           str(snr_threshold) + 'and beta higher than ' + \
+                           '1e-4 m^-1 sr^-1 (or behind such value), ' + \
                            azimuth_str + 'version information: ' + nc_file_in
         nc_lidar.Processing_date = time.strftime("%Y-%m-%d %H:%M:%S",
                                                  time.gmtime()) + '(UTC)'
@@ -363,8 +365,8 @@ def wrap_flag_qdv_of_l1(nc_file_in, path_folder_in, path_folder_out,
                         follows Marke et al. (doi.org/10.1175/JAMC-D-17-0341.1)
         check_exist: If True then approach is canceled when output file is
                      already existing.
-        weight_starting_azimuth: if azimuth_shift is True, this is the weight to
-                                 shift the starting azimuth, and
+        weight_starting_azimuth: if azimuth_shift is True, this is the weight
+                                 to shift the starting azimuth, and
                                  (1-weight_starting_azimuth) is the weight of
                                  the ending azimuth. The value 0.6 was
                                  empirically chosen and is still questionable.
@@ -391,15 +393,15 @@ def wrap_flag_qdv_of_l1(nc_file_in, path_folder_in, path_folder_out,
                    weight_starting_azimuth=weight_starting_azimuth)
 
 
-################################################################################
-# STEP B: Retrieval                                                            #
-#                                                                              #
-# Process lidar-netcdf's l1 towards wind vectors which are derived from        #
-# consecutive beams within a duration window at given heights. The maximal     #
-# duration gives the time dimension, since one day is divided into pieces of   #
-# the given duration. Further one retrieval per circulation is calculable to   #
-# obtain later gust peaks.                                                     #
-################################################################################
+########################################################################
+# STEP B: Retrieval                                                    #
+#                                                                      #
+# Process lidar-netcdf's l1 towards wind vectors which are derived     #
+# from consecutive beams within a duration window at given heights.    #
+# The maximal duration gives the time dimension, since one day is      #
+# divided into pieces of the given duration. Further one retrieval per #
+# circulation is calculable to obtain later gust peaks.                #
+########################################################################
 
 
 def uvw0_retrieval(dv, zenith, azimuth, lowest_frac=0.5,
@@ -432,8 +434,8 @@ def uvw0_retrieval(dv, zenith, azimuth, lowest_frac=0.5,
     """
 
     if not ((dv.size == zenith.size) & (dv.size == azimuth.size)):
-        raise ValueError('The vector lengths of zenith(%s), azimuth(%s), ' +
-                         'and dv(%s) are different.'
+        raise ValueError('The vector lengths of zenith(%s), azimuth(%s), '
+                         'and dv(%s) are different. '
                          % (zenith.size, azimuth.size, dv.size))
 
     mask = np.where(np.where(dv == -999.0, False, True) *
@@ -507,7 +509,7 @@ def uvw0_retrieval(dv, zenith, azimuth, lowest_frac=0.5,
                 'nvrad': 0, 'r2': np.nan, 'cn': np.nan}
 
     covariance_matrix = (dv.size - 3) / n_ef * np.linalg.inv(
-        np.transpose(A).dot(A)) * sigma_approx**2
+        np.transpose(A).dot(A)) * sigma_approx ** 2
     return {'uvw': uvw, 'covariance_matrix': covariance_matrix,
             'nvrad': nvrad, 'r2': r2, 'cn': cn}
 
@@ -532,9 +534,10 @@ def lin_inter_pol_dv(DV, zenith, m_range, heights):
     """
 
     if not (DV.shape[1] == len(m_range)):
-        raise ValueError('The vector lengths of m_range (%s) and the columns of'
-                         ' DV(%s) are different.' %
-                         (len(m_range), DV.shape[1]))
+        raise ValueError(
+            'The vector lengths of m_range (%s) and the columns of'
+            ' DV(%s) are different.' %
+            (len(m_range), DV.shape[1]))
 
     if not (DV.shape[0] == len(zenith)):
         raise ValueError('The vector lengths of zenith (%s) and the rows of '
@@ -574,16 +577,15 @@ def lin_inter_pol_dv(DV, zenith, m_range, heights):
                      index[index_below_top] - 1]
             dv2 = DV[(np.array(range(len(index_below_top)))),
                      index[index_below_top]]
-            DV_ip[index_below_top, a] = lin_in(x1, x2, dv1, dv2,
-                                               heights[a])
+            DV_ip[index_below_top, a] = lin_in(x1, x2, dv1, dv2, heights[a])
 
     return DV_ip
 
 
 def uvw1_retrieval_vertical(nc_lidar, i_t_start, i_t_end, heights,
                             quality_control_snr=False, lowest_frac=0.5,
-                            highest_allowed_sigma=3, iteration_stopping_sigma=1,
-                            n_ef=12):
+                            highest_allowed_sigma=3,
+                            iteration_stopping_sigma=1, n_ef=12):
     """ Retrieve wind information of lidar between starting and ending index
         in all heights by using uvw0_retrieval
 
@@ -649,8 +651,8 @@ def uvw1_retrieval_vertical(nc_lidar, i_t_start, i_t_end, heights,
         uvw0 = uvw0_retrieval(dv=dv, zenith=zenith, azimuth=azimuth,
                               lowest_frac=lowest_frac,
                               highest_allowed_sigma=highest_allowed_sigma,
-                              iteration_stopping_sigma=iteration_stopping_sigma,
-                              n_ef=n_ef, nqv=nqv)
+                              iteration_stopping_sigma=
+                              iteration_stopping_sigma,n_ef=n_ef, nqv=nqv)
         u1[i_h] = uvw0['uvw'][0]
         v1[i_h] = uvw0['uvw'][1]
         w1[i_h] = uvw0['uvw'][2]
@@ -737,7 +739,7 @@ def nc_comments(nc_file_in, nc_lidar):
     """ Comment to describe the scanning mode
 
     Args:
-      nc_file_in: Filename of nc-file with the lidar data located in folder in
+      nc_file_in: Filename of nc-file with the lidar data located in folder
                   in SAMD 1.2 convention (doi.org/10.3390/ijgi5070124).
       nc_lidar: A loaded netcdf file with lidar data.
     Returns:
@@ -919,7 +921,8 @@ def uvw2_time_series_netcdf(nc_file_in, path_folder_in, path_folder_out,
                                                              ('height',))
         height_interpolated_nc.long_name = 'height mask for the center of ' \
                                            'range gates heights'
-        height_interpolated_nc.flag_values = '0 = interpolated; 1 = corg height'
+        height_interpolated_nc.flag_values = '0 = interpolated; ' \
+                                             '1 = corg height'
         height_interpolated_nc[:] = heights_corg
 
     nc_lidar_new.createDimension('rows', 3)
@@ -952,13 +955,13 @@ def uvw2_time_series_netcdf(nc_file_in, path_folder_in, path_folder_out,
                                        ('time', 'height'),
                                        fill_value=-999.0)
     u_nc.standard_name = 'u-component wind'
-    u_nc.long_name = ('zonal-component towards east of wind')
+    u_nc.long_name = 'zonal-component towards east of wind'
     u_nc.units = 'm s-1'
     v_nc = nc_lidar_new.createVariable('v', np.float32,
                                        ('time', 'height'),
                                        fill_value=-999.0)
     v_nc.standard_name = 'v-component wind'
-    v_nc.long_name = ('meridional-component towards north of wind')
+    v_nc.long_name = 'meridional-component towards north of wind'
     v_nc.units = 'm s-1'
     w_nc = nc_lidar_new.createVariable('w', np.float32,
                                        ('time', 'height'),
@@ -1169,7 +1172,8 @@ def uvw3_retrievals(nc_file_in, path_folder_in, path_folder_out,
     mode = name_control[name_control.__len__() - 5][4:6]
     if mode in ['ST', 'PP', 'RH']:
         wn.warn('Wrong input: The file ' + nc_file_in + ' represents Stare, ' +
-                'PPI or RHI scanning mode and this retrieval is not applicable')
+                'PPI or RHI scanning mode and this retrieval is not ' +
+                'applicable')
         return
     if not nc_name_check_level(nc_file_in) == 1:
         wn.warn('Wrong input: The file ' + nc_file_in + ' is not of level 1')
@@ -1246,11 +1250,12 @@ def uvw3_retrievals(nc_file_in, path_folder_in, path_folder_out,
                     'with' + nc_file_in + 'and duration' + str(duration) + 's')
 
 
-################################################################################
-# STEP C: Wind product                                                         #
-#                                                                              #
-# Create end-product netcdf which contains both 600s winds and 600s gust peaks.#
-################################################################################
+########################################################################
+# STEP C: Wind product                                                 #
+#                                                                      #
+# Create end-product netcdf which contains both 600s winds and 600s    #
+# gust peaks.                                                          #
+########################################################################
 
 
 def wind_and_gust_netcdf(nc_file_in_mean, path_folder_in_mean,
@@ -1476,13 +1481,13 @@ def wind_and_gust_netcdf(nc_file_in_mean, path_folder_in_mean,
            path_folder_out + nc_file_in_new)
 
 
-################################################################################
-# STEP D: Quicklooks                                                           #
-#                                                                              #
-# Plot routines for lidar-netcdf's l2 files which contains horizontal wind     #
-# information (u, v) or wind gust information (if gust=True, u_gust_peak,      #
-# v_gust_peak).                                                                #
-################################################################################
+########################################################################
+# STEP D: Quicklooks                                                   #
+#                                                                      #
+# Plot routines for lidar-netcdf's l2 files which contains horizontal  #
+# wind information (u, v) or wind gust information (if gust=True,      #
+# u_gust_peak, v_gust_peak).                                           #
+########################################################################
 
 
 def lidar_quicklook(nc_file_in, path_folder_in, path_folder_out,
@@ -1605,7 +1610,8 @@ def lidar_quicklook(nc_file_in, path_folder_in, path_folder_out,
         except:
             wn.warn(path_folder_out + ' simultaniously created!')
 
-    plt.savefig(path_folder_out + name_prefix + nc_file_in[:-3] + '.' + str_out,
-                str=str_out, bbox_inches='tight')
+    plt.savefig(
+        path_folder_out + name_prefix + nc_file_in[:-3] + '.' + str_out,
+        str=str_out, bbox_inches='tight')
     plt.close()
     print(name_prefix + nc_file_in[:-3] + '.' + str_out + ' done!')
