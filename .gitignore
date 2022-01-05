@@ -1,0 +1,7 @@
+__pycache__
+other_scripts/
+plots/
+.idea/
+.ipynb_checkpoints/
+data/24Beam_testday/DWL_l1_QC/
+data/24Beam_testday/DWL_l2/
