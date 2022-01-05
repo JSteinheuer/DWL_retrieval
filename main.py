@@ -75,7 +75,7 @@ heights_fix = np.array([90.3])  # sonic anemometer height to interpolate
 quality_control_snr = False  # not necessary with this retrieval (but possible)
 check_exist = True
 iteration_stopping_sigma = 1
-dir_l1_qc = dir_l1 = getcwd() + '/data/'
+dir_l1_qc = getcwd() + '/data/'
 f_and_f = files_and_folders_of_dir(directory=dir_l1_qc)
 path_folders_in = f_and_f['folders']
 nc_files_in = f_and_f['files']
