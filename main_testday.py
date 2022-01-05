@@ -104,7 +104,7 @@ wind_and_gust_netcdf(nc_file_in_mean='tub_dlidVAD143_l2_uvw'
 # STEP D: Quicklooks                                                   #
 ########################################################################
 
-dir_l2 = getcwd() + '/data/24Beam_testday/DWL_l2'
+dir_l2 = getcwd() + '/data/24Beam_testday/DWL_l2/'
 f_and_f = files_and_folders_of_dir(directory=dir_l2)
 path_folders_in = f_and_f['folders']
 nc_files_in = f_and_f['files']

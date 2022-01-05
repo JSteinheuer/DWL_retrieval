@@ -1582,7 +1582,7 @@ def lidar_quicklook(nc_file_in, path_folder_in, path_folder_out,
         label = 'wind gust peak [m/s]'
 
     if bar:
-        cbar = plt.colorbar(img, cmap=cmap, norm=norm, boundaries=bounds,
+        cbar = plt.colorbar(img, boundaries=bounds,
                             ticks=[i for i in range(0, top_wind + 2, 5)],
                             extend='max',
                             label=label)
@@ -1612,6 +1612,6 @@ def lidar_quicklook(nc_file_in, path_folder_in, path_folder_out,
 
     plt.savefig(
         path_folder_out + name_prefix + nc_file_in[:-3] + '.' + str_out,
-        str=str_out, bbox_inches='tight')
+        bbox_inches='tight')
     plt.close()
     print(name_prefix + nc_file_in[:-3] + '.' + str_out + ' done!')
