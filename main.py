@@ -217,7 +217,7 @@ pool = mp.Pool(np.min((mp.cpu_count(), max_cpu)))  # parallel on
 pool.starmap_async(wind_and_gust_netcdf,
                    [(nc_file_in_mean, path_folder_in_mean,
                      nc_file_in_circ, path_folder_in_circ,
-                     path_folder_out, 0.5, np.nan, True)
+                     path_folder_out, 0.5, True, 1)
                     for nc_file_in_mean, path_folder_in_mean, nc_file_in_circ,
                     path_folder_in_circ, path_folder_out in
                     zip(nc_files_in_mean, path_folders_in_mean,
