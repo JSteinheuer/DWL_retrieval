@@ -23,14 +23,18 @@ FITNESS FOR A PARTICULAR PURPOSE.
 For a description of the methods, refer to Steinheuer et al. (2022).
 To test the script with an example day use main_testday.py or
 main_testday_qCSM.py
+
+The 29th June 2021 in quck continuous scanning mode is too big for git, so
+  please downlaad here: https://doi.org/10.25592/uhhfdm.11227, i.e.,
+  the example is: https://icdc.cen.uni-hamburg.de/thredds/catalog/ftpthredds/fesstval/wind_and_gust/falkenberg_dlidcsm/level1/csm02/2021/catalog.html?dataset=ftpthreddsscan/fesstval/wind_and_gust/falkenberg_dlidcsm/level1/csm02/2021/sups_rao_dlidCSM02_l1_any_v00_20210629.nc
 """
 
 
 ###############################################################################
-# Julian Steinheuer; November 2021                                            #
-# main_testday.py: run DWL_retrieval for test day 20190929                    #
+# Julian Steinheuer; June 2023                                                #
+# main_testday_qCSM.py: run DWL_retrieval for test day 20210629               #
 # Update in 2023: - change variable names                                     #
-#                 - w-correction (no need for slow mode for this test day     #
+#                 - w-correction                                              #
 ###############################################################################
 
 import numpy as np
@@ -44,6 +48,8 @@ from DWL_retrieval import \
     wind_and_gust_netcdf
 from DWL_retrieval import \
     lidar_quicklook
+from DWL_retrieval import \
+    w_correction
 
 max_cpu = 12  # how many kernels to use?
 
@@ -51,12 +57,13 @@ max_cpu = 12  # how many kernels to use?
 # STEP A: Quality check                                                       #
 ###############################################################################
 
-wrap_flag_qdv_of_l1(nc_file_in='tub_dlidVAD143_l1_any_v00_20190929000000.nc',
-                    path_folder_in=getcwd() + '/data/24Beam_testday/DWL_l1/',
+wrap_flag_qdv_of_l1(nc_file_in='sups_rao_dlidCSM02_l1_any_v00_20210629.nc',
+                    path_folder_in=getcwd() + '/data/qCSM_testday/DWL_l1/',
                     path_folder_out=getcwd() +
-                    '/data/24Beam_testday/DWL_l1_QC/',
+                    '/data/qCSM_testday/DWL_l1_QC/',
                     snr_threshold=-18.2, beta_threshold=1e-4,
-                    check_exist=True, weight_starting_azimuth=0.6)
+                    check_exist=True, weight_starting_azimuth=0.6,
+                    azimuth_shift=True)
 
 ###############################################################################
 # STEP B: Retrieval                                                           #
@@ -65,10 +72,10 @@ wrap_flag_qdv_of_l1(nc_file_in='tub_dlidVAD143_l1_any_v00_20190929000000.nc',
 #                and its subfolders, if the files are of level 1, do!         #
 ###############################################################################
 
-uvw3_retrievals(nc_file_in='tub_dlidVAD143_l1_any_v01_20190929000000.nc',
-                path_folder_in=getcwd() + '/data/24Beam_testday/DWL_l1_QC/',
+uvw3_retrievals(nc_file_in='sups_rao_dlidCSM02_l1_any_v01_20210629.nc',
+                path_folder_in=getcwd() + '/data/qCSM_testday/DWL_l1_QC/',
                 path_folder_out=getcwd() +
-                '/data/24Beam_testday/DWL_l2/wind-600s/',
+                '/data/qCSM_testday/DWL_l2/wind-600s/',
                 duration=600, circ=False, heights_fix=np.array([90.3]),
                 quality_control_snr=False, check_exist=True,
                 lowest_frac=0.5, highest_allowed_sigma=3,
@@ -79,10 +86,10 @@ uvw3_retrievals(nc_file_in='tub_dlidVAD143_l1_any_v01_20190929000000.nc',
 #                and its subfolders, if the files are of  level 1, do!        #
 ###############################################################################
 
-uvw3_retrievals(nc_file_in='tub_dlidVAD143_l1_any_v01_20190929000000.nc',
-                path_folder_in=getcwd() + '/data/24Beam_testday/DWL_l1_QC/',
+uvw3_retrievals(nc_file_in='sups_rao_dlidCSM02_l1_any_v01_20210629.nc',
+                path_folder_in=getcwd() + '/data/qCSM_testday/DWL_l1_QC/',
                 path_folder_out=getcwd() +
-                '/data/24Beam_testday/DWL_l2/wind-circ/',
+                '/data/qCSM_testday/DWL_l2/wind-circ/',
                 duration=np.nan, circ=True, heights_fix=np.array([90.3]),
                 quality_control_snr=False, check_exist=True,
                 lowest_frac=0.66, highest_allowed_sigma=1,
@@ -92,16 +99,16 @@ uvw3_retrievals(nc_file_in='tub_dlidVAD143_l1_any_v01_20190929000000.nc',
 # STEP C: Wind product                                                        #
 ###############################################################################
 
-wind_and_gust_netcdf(nc_file_in_mean='tub_dlidVAD143_l2_wind'
-                                     '-600s_v01_20190929000000.nc',
+wind_and_gust_netcdf(nc_file_in_mean='sups_rao_dlidCSM02_l2_wind'
+                                     '-600s_v01_20210629.nc',
                      path_folder_in_mean=getcwd() +
-                     '/data/24Beam_testday/DWL_l2/wind-600s/',
-                     nc_file_in_circ='tub_dlidVAD143_l2_wind'
-                                     '-circ_v01_20190929000000.nc',
+                     '/data/qCSM_testday/DWL_l2/wind-600s/',
+                     nc_file_in_circ='sups_rao_dlidCSM02_l2_wind'
+                                     '-circ_v01_20210629.nc',
                      path_folder_in_circ=getcwd() +
-                     '/data/24Beam_testday/DWL_l2/wind-circ/',
+                     '/data/qCSM_testday/DWL_l2/wind-circ/',
                      path_folder_out=getcwd() +
-                     '/data/24Beam_testday/DWL_l2/wind-gust/',
+                     '/data/qCSM_testday/DWL_l2/wind-gust/',
                      circulations_fraction=0.5,
                      check_exist=True, max_out=1)
 
@@ -109,7 +116,7 @@ wind_and_gust_netcdf(nc_file_in_mean='tub_dlidVAD143_l2_wind'
 # STEP D: Quicklooks                                                          #
 ###############################################################################
 
-dir_l2 = getcwd() + '/data/24Beam_testday/DWL_l2/'
+dir_l2 = getcwd() + '/data/qCSM_testday/DWL_l2/'
 f_and_f = files_and_folders_of_dir(directory=dir_l2)
 path_folders_in = f_and_f['folders']
 nc_files_in = f_and_f['files']
@@ -122,3 +129,16 @@ for nc_file_in, path_folder_in, path_folder_out in zip(nc_files_in,
     else:
         lidar_quicklook(nc_file_in, path_folder_in, path_folder_out)
 
+###############################################################################
+# STEP E: W-CORRECTIN                                                         #
+###############################################################################
+
+dir_l2 = getcwd() + '/data/qCSM_testday/DWL_l2/'
+f_and_f = files_and_folders_of_dir(directory=dir_l2)
+path_folders_in = f_and_f['folders']
+nc_files_in = f_and_f['files']
+path_folders_out = [f.replace('DWL_l2', 'DWL_l2_WC') for f in path_folders_in]
+for nc_file_in, path_folder_in, path_folder_out in zip(nc_files_in,
+                                                       path_folders_in,
+                                                       path_folders_out):
+    w_correction(nc_file_in, path_folder_in, path_folder_out)

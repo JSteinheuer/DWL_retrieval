@@ -2,28 +2,36 @@
 """
 This code is used to calculate wind gust peaks as described in:
 
-Steinheuer, Detring, Beyrich, Löhnert, Friederichs, and Fiedler
-(2021): A new scanning scheme and flexible retrieval to derive both
-mean winds and gusts from Doppler lidar measurements,
-Atmos. Meas. Tech
-DOI:
+Steinheuer, Detring, Beyrich, Löhnert, Friederichs, and Fiedler (2022):
+A new scanning scheme and flexible retrieval to derive both mean winds and
+gusts from Doppler lidar measurements, Atmos. Meas. Tech
+DOI: https://doi.org/10.5194/amt-15-3243-2022
 
-This program is a free software distributed under the terms of the GNU
-General Public License as published by the Free Software Foundation,
-version 3 (GNU-GPLv3).
+AND:
 
-You can redistribute and/or modify by citing the mentioned publication,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+Steinheuer, Vertical wind gust profiles, Dissertation, University of Cologne,
+URL: https://kups.ub.uni-koeln.de/65655/
 
-For a description of the methods, refer to Steinheuer et al. (2021).
-To test the script with an example day use main_testday.py
+This program is a free software distributed under the terms of the GNU General
+Public License as published by the Free Software Foundation, version 3
+(GNU-GPLv3).
+
+You can redistribute and/or modify by citing the mentioned publication, but
+WITHOUT ANY WARRANTY; without even the implied warranty of  MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE.
+
+For a description of the methods, refer to Steinheuer et al. (2022).
+To test the script with an example day use main_testday.py or
+main_testday_qCSM.py
 """
 
-########################################################################
-# Julian Steinheuer; November 2021                                     #
-# DWL_retrieval.py                                                     #
-########################################################################
+
+###############################################################################
+# Julian Steinheuer; November 2021                                            #
+# DWL_retrieval.py                                                            #
+# Update in 2023: - change variable names                                     #
+#                 - w-correction                                              #
+###############################################################################
 
 import numpy as np
 import netCDF4 as nc
@@ -36,17 +44,17 @@ import warnings as wn
 from scipy.stats import norm
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+import datetime as dt
 
 
-########################################################################
-# STEP A: Quality check                                                #
-#                                                                      #
-# Process lidar-netcdf's l1. The qdv value is set on 0 if SNR (given   #
-# as intensity = 1 + SNR) is not above certain (e.g SNR>-18)           #
-# threshold. Further a beta threshold could be set for cloud           #
-# detection. For quick scanning modi the azimuth tends to shift which  #
-# can be repaired.                                                     #
-########################################################################
+###############################################################################
+# STEP A: Quality check                                                       #
+#                                                                             #
+# Process lidar-netcdf's l1. The qdv value is set on 0 if SNR (given as       #
+# intensity = 1 + SNR) is not above certain (e.g SNR>-18) threshold.          #
+# Further a beta threshold could be set for cloud detection.                  #
+# For quick scanning modi the azimuth tends to shift which can be repaired.   #
+###############################################################################
 
 
 def files_and_folders_of_dir(directory, not_nc=False, tmp=False, error=False):
@@ -160,7 +168,9 @@ def mean_azimuth(a, b, weight_a=0.6):
         a: starting azimuth.
         b: ending azimuth.
         weight_a: weight of a; so (1-weight_a) is the weight of b. The value
-                  0.6 was empirically chosen and is still questionable.
+                  0.6 was empirically chosen and is still questionable. See:
+                  Steinheuer (2023), Vertical wind gust profiles,
+                  Dissertation, University of Cologne.
       Returns:
         w_mean: weighted mean.
       """
@@ -207,7 +217,7 @@ def flag_qdv_of_l1(nc_file_in, path_folder_in='', path_folder_out=None,
         path_folder_out = path_folder_in
 
     if nc_name_check_level(nc_file_in) != 1:
-        wn.warn(nc_file_in + ' is not of level 1. No quality control is done.')
+        wn.warn(nc_file_in + ' is not of level 1. No quality control is done')
         return
 
     if not isdir(path_folder_out):
@@ -221,7 +231,7 @@ def flag_qdv_of_l1(nc_file_in, path_folder_in='', path_folder_out=None,
     if exist and check_exist:
         print('Consider: ' + nc_file_out +
               ' is existing and not again calculated. Please set '
-              '>check_exist< to FALSE, if recalculation is needed.')
+              '>check_exist< to FALSE, if recalculation is needed')
         return
 
     system('cp ' + path_folder_in + nc_file_in + ' ' + path_folder_out +
@@ -348,7 +358,8 @@ def flag_qdv_of_l1(nc_file_in, path_folder_in='', path_folder_out=None,
 
 def wrap_flag_qdv_of_l1(nc_file_in, path_folder_in, path_folder_out,
                         snr_threshold=-18.2, beta_threshold=1e-4,
-                        check_exist=True, weight_starting_azimuth=0.6):
+                        check_exist=True, weight_starting_azimuth=0.6,
+                        azimuth_shift=np.nan):
     """ Wrap the function 'flag_qdv_of_l1' in order to parallelize
 
       Args:
@@ -370,17 +381,23 @@ def wrap_flag_qdv_of_l1(nc_file_in, path_folder_in, path_folder_out,
                                  (1-weight_starting_azimuth) is the weight of
                                  the ending azimuth. The value 0.6 was
                                  empirically chosen and is still questionable.
+        azimuth_shift: True or False, to force to do or not do the correction.
+                       If default np.nan, then the folder path should include
+                       somehow csm if correction is wanted.
       Returns:
       """
 
     print(path_folder_in + nc_file_in)
-    if '/CSM1/' in path_folder_in or \
-            '/CSM2/' in path_folder_in or \
-            '/CSM3/' in path_folder_in or \
-            '/csm/' in path_folder_in:
-        azimuth_shift = True
-    else:
-        azimuth_shift = False
+    if np.isnan(azimuth_shift):
+        if '/CSM1/' in path_folder_in or \
+                '/CSM2/' in path_folder_in or \
+                '/CSM3/' in path_folder_in or \
+                'csm' in path_folder_in or \
+                'CSM' in path_folder_in or \
+                '/wind_and_gust/' in path_folder_in:
+            azimuth_shift = True
+        else:
+            azimuth_shift = False
 
     print(nc_file_in + ', azimuth shift: ' + str(azimuth_shift))
     flag_qdv_of_l1(nc_file_in=nc_file_in,
@@ -393,15 +410,15 @@ def wrap_flag_qdv_of_l1(nc_file_in, path_folder_in, path_folder_out,
                    weight_starting_azimuth=weight_starting_azimuth)
 
 
-########################################################################
-# STEP B: Retrieval                                                    #
-#                                                                      #
-# Process lidar-netcdf's l1 towards wind vectors which are derived     #
-# from consecutive beams within a duration window at given heights.    #
-# The maximal duration gives the time dimension, since one day is      #
-# divided into pieces of the given duration. Further one retrieval per #
-# circulation is calculable to obtain later gust peaks.                #
-########################################################################
+###############################################################################
+# STEP B: Retrieval                                                           #
+#                                                                             #
+# Process lidar-netcdf's l1 towards wind vectors which are derived from       #
+# consecutive beams within a duration window at given heights. The maximal    #
+# duration gives the time dimension, since one day is divided into pieces of  #
+# the given duration. Further one retrieval per circulation is calculable to  #
+# obtain later gust peaks.                                                    #
+###############################################################################
 
 
 def uvw0_retrieval(dv, zenith, azimuth, lowest_frac=0.5,
@@ -536,12 +553,12 @@ def lin_inter_pol_dv(DV, zenith, m_range, heights):
     if not (DV.shape[1] == len(m_range)):
         raise ValueError(
             'The vector lengths of m_range (%s) and the columns of'
-            ' DV(%s) are different.' %
+            ' DV(%s) are different' %
             (len(m_range), DV.shape[1]))
 
     if not (DV.shape[0] == len(zenith)):
         raise ValueError('The vector lengths of zenith (%s) and the rows of '
-                         'DV(%s) are different.' %
+                         'DV(%s) are different' %
                          (len(zenith), DV.shape[0]))
 
     if not np.unique(heights == np.unique(heights))[0]:
@@ -824,10 +841,10 @@ def name_nc_file_out(nc_file_in, circ=True, duration=np.nan,
 
         if char == 'any':
             if circ:
-                name_control[i] = 'uvw-circ'
+                name_control[i] = 'wind-circ'
 
             else:
-                name_control[i] = 'uvw-' + str(int(duration)) + 's'
+                name_control[i] = 'wind-' + str(int(duration)) + 's'
 
             if quality_control_snr:
                 name_control[i] = name_control[i] + '-SNR'
@@ -882,7 +899,7 @@ def uvw2_time_series_netcdf(nc_file_in, path_folder_in, path_folder_out,
     if exist and check_exist:
         print('Consider: ' + nc_file_out +
               ' is existing and not again calculated. Please set '
-              '>check_exist< to FALSE, if recalculation is needed.')
+              '>check_exist< to FALSE, if recalculation is needed')
         return
 
     nc_lidar = nc.Dataset(path_folder_in + nc_file_in)
@@ -890,29 +907,76 @@ def uvw2_time_series_netcdf(nc_file_in, path_folder_in, path_folder_out,
                               'w', format='NETCDF4_CLASSIC')
     nc_description = nc_comments(nc_file_in, nc_lidar)
     # global attributes
-    nc_lidar_new.setncatts(nc_lidar.__dict__)
+    # nc_lidar_new.setncatts(nc_lidar.__dict__)
     nc_lidar_new.Title = 'Wind vectors derived from Doppler wind lidars'
-    nc_lidar_new.History = 'From each beam within duration length the ' \
-                           'absolute wind vector is derived; version ' \
-                           'information: ' + nc_file_in
+    if 'institution' in nc_lidar.__dict__:
+        nc_lidar_new.Institution = nc_lidar.institution
+    elif 'Institution' in nc_lidar.__dict__:
+        nc_lidar_new.Institution = nc_lidar.Institution
+    else:
+        nc_lidar_new.Institution = 'University of Cologne'
+
+    if 'instrument_contact' in nc_lidar.__dict__:
+        nc_lidar_new.Contact_person = nc_lidar.instrument_contact
+    elif 'Contact_person' in nc_lidar.__dict__:
+        nc_lidar_new.Contact_person = nc_lidar.Contact_person
+    elif 'contact_person' in nc_lidar.__dict__:
+        nc_lidar_new.Contact_person = nc_lidar.contact_person
+    else:
+        nc_lidar_new.Contact_person = 'Dr. Julian Steinheuer, ' \
+                                      'Julian.Steinheuer@uni-koeln.de'
+
+    if 'instrument_type' in nc_lidar.__dict__ and 'instrument_mode' in nc_lidar.__dict__:
+        nc_lidar_new.Source = 'Ground based remote sensing by a ' + \
+                              nc_lidar.instrument_type + ' in ' + \
+                              nc_lidar.instrument_mode + \
+                              ' processed with JSteinheuer/DWL_retrieval ' \
+                              '(doi.org/10.5281/zenodo.5780949)'
+    else:
+        nc_lidar_new.Source = 'Ground based remote sensing by a DWL' \
+                              ' processed with JSteinheuer/DWL_retrieval ' \
+                              '(doi.org/10.5281/zenodo.5780949)'
+
+    if 'history' in nc_lidar.__dict__:
+        nc_lidar_new.History = 'Retrieval from Steinheuer et al. 2022 ' \
+                               '(doi.org/10.5194/amt-15-3243-2022) and from ' \
+                               'level1: ' + nc_lidar.history
+    elif 'History' in nc_lidar.__dict__:
+        nc_lidar_new.History = 'Retrieval from Steinheuer et al. 2022 ' \
+                               '(doi.org/10.5194/amt-15-3243-2022) and from ' \
+                               'level1: ' + nc_lidar.History
+    else:
+        nc_lidar_new.History = 'Retrieval from Steinheuer et al. 2022 ' \
+                               '(doi.org/10.5194/amt-15-3243-2022) and from ' \
+                               'level1 file: ' + nc_file_in
+
+    nc_lidar_new.Dependencies = nc_file_in
+    nc_lidar_new.Conventions = 'CF-1.8'
     nc_lidar_new.Processing_date = time.strftime("%Y-%m-%d %H:%M:%S",
                                                  time.gmtime()) + '(UTC)'
-    nc_lidar_new.Author = 'Julian Steinheuer, Julian.Steinheuer@uni-koeln.de'
+    nc_lidar_new.Author = 'Dr. Julian Steinheuer, ' \
+                          'Julian.Steinheuer@uni-koeln.de'
     nc_lidar_new.Comments = nc_description['comment']
+    nc_lidar_new.License = 'For non-commercial use only. This data is ' \
+                           'subject to the SAMD data policy to be found at ' \
+                           'doi.org/10.25592/uhhfdm.9824 and in ' \
+                           'the SAMD Observation Data Product standard v2.0'
     # dimensions
     heights_all = heights
     nc_lidar_new.createDimension('time', None)
     t_nc = nc_lidar_new.createVariable('time', np.float64, ('time',))
-    t_nc.standard_name = 'time'
     t_nc.long_name = 'time'
     t_nc.units = 'seconds since 1970-01 00:00:00'
     t_nc.calender = 'gregorian'
+    t_nc.bounds = 'time_bnds'
+    t_nc.comments = 'Timestamp belongs to the start of the interval and is ' \
+                    'in UTC'
     nc_lidar_new.createDimension('height', len(heights_all))
     height_nc = nc_lidar_new.createVariable('height', np.float32, ('height',))
     height_nc.long_name = 'vertical distance from sensor'
-    height_nc.commend = ('Height correspond not automatically to a center of '
-                         'range gate. Possible are interpolated values in '
-                         'between.')
+    height_nc.comments = 'Height does not automatically correspond to a ' \
+                         'center of range gate, since interpolated values ' \
+                         'could be used. Check the flag height_corg for this'
     height_nc.units = 'm'
     height_nc[:] = heights_all[:].data
     if not np.isnan(heights_corg[0]):
@@ -921,103 +985,131 @@ def uvw2_time_series_netcdf(nc_file_in, path_folder_in, path_folder_out,
                                                              ('height',))
         height_interpolated_nc.long_name = 'height mask for the center of ' \
                                            'range gates heights'
-        height_interpolated_nc.flag_values = '0 = interpolated; ' \
-                                             '1 = corg height'
+        height_interpolated_nc.units = '1'
+        height_interpolated_nc.comments = 'Flag values mean: ' \
+                                          '0 = interpolated height; ' \
+                                          '1 = corg height.'
         height_interpolated_nc[:] = heights_corg
 
-    nc_lidar_new.createDimension('rows', 3)
-    rows_nc = nc_lidar_new.createVariable('rows', np.float32, ('rows',))
-    rows_nc.long_name = 'rows of covariance matrix'
-    rows_nc.units = '1'
-    nc_lidar_new.createDimension('cols', 3)
-    cols_nc = nc_lidar_new.createVariable('cols', np.float32, ('cols',))
-    cols_nc.long_name = 'columns of covariance matrix'
-    cols_nc.units = '1'
+    nc_lidar_new.createDimension('row', 3)
+    # rows_nc = nc_lidar_new.createVariable('rows', np.float32, ('rows',))
+    # rows_nc.long_name = 'rows of covariance matrix'
+    # rows_nc.units = '1'
+    nc_lidar_new.createDimension('col', 3)
+    # cols_nc = nc_lidar_new.createVariable('cols', np.float32, ('cols',))
+    # cols_nc.long_name = 'columns of covariance matrix'
+    # cols_nc.units = '1'
     nc_lidar_new.createDimension('nv', 2)
     # variables copy d
-    for var in ['focus', 'lat', 'lon', 'lrg', 'nfft', 'npls', 'nqf', 'nqv',
-                'nrg', 'nsmpl', 'pd', 'prf', 'resf', 'resv', 'smplf', 'tgint',
-                'wl', 'zsl']:
-        try:
-            nc_lidar_new.createVariable(var, nc_lidar[var].datatype,
-                                        nc_lidar[var].dimensions,
-                                        fill_value=-999.0)
-            dict_var = nc_lidar[var].__dict__
-            nc_lidar_new[var].setncatts(
-                {k: dict_var[k] for k in dict_var.keys() if
-                 not k == '_FillValue'})
-            nc_lidar_new[var][:] = nc_lidar[var][:].data
-        except:
-            wn.warn(var + ' dictionary could not be copied')
+    var = 'lat'
+    nc_lidar_new.createVariable(var, nc_lidar[var].datatype,
+                                nc_lidar[var].dimensions)
+    nc_lidar_new[var].long_name = 'latitude'
+    nc_lidar_new[var].comments = 'Latitude of instrument location'
+    nc_lidar_new[var].units = 'degrees_north'
+    nc_lidar_new[var][:] = nc_lidar[var][:].data
+    var = 'lon'
+    nc_lidar_new.createVariable(var, nc_lidar[var].datatype,
+                                nc_lidar[var].dimensions)
+    nc_lidar_new[var].long_name = 'longitude'
+    nc_lidar_new[var].comments = 'Longitude of instrument location'
+    nc_lidar_new[var].units = 'degrees_east'
+    nc_lidar_new[var][:] = nc_lidar[var][:].data
+    var = 'zsl'
+    nc_lidar_new.createVariable(var, nc_lidar[var].datatype,
+                                nc_lidar[var].dimensions)
+    nc_lidar_new[var].long_name = 'altitude'
+    nc_lidar_new[var].comments = 'Altitude of instrument above mean sea level'
+    nc_lidar_new[var].units = 'm'
+    nc_lidar_new[var][:] = nc_lidar[var][:].data
+
+
+
+    # for var in ['lat', 'lon', 'zsl']:
+    # # for var in ['focus', 'lat', 'lon', 'lrg', 'nfft', 'npls', 'nqf', 'nqv',
+    # #             'nrg', 'nsmpl', 'pd', 'prf', 'resf', 'resv', 'smplf', 'tgint',
+    # #             'wl', 'zsl']:
+    #     try:
+    #         nc_lidar_new.createVariable(var, nc_lidar[var].datatype,
+    #                                     nc_lidar[var].dimensions,
+    #                                     fill_value=-999.0)
+    #         dict_var = nc_lidar[var].__dict__
+    #         nc_lidar_new[var].setncatts(
+    #             {k: dict_var[k] for k in dict_var.keys() if
+    #              not k == '_FillValue'})
+    #         nc_lidar_new[var][:] = nc_lidar[var][:].data
+    #     except:
+    #         wn.warn(var + ' dictionary could not be copied')
 
     # variables assign new
     u_nc = nc_lidar_new.createVariable('u', np.float32,
                                        ('time', 'height'),
                                        fill_value=-999.0)
-    u_nc.standard_name = 'u-component wind'
-    u_nc.long_name = 'zonal-component towards east of wind'
+    u_nc.long_name = 'eastward wind'
     u_nc.units = 'm s-1'
+    u_nc.comments = 'Eastward wind, i.e. zonal component of wind'
     v_nc = nc_lidar_new.createVariable('v', np.float32,
                                        ('time', 'height'),
                                        fill_value=-999.0)
-    v_nc.standard_name = 'v-component wind'
-    v_nc.long_name = 'meridional-component towards north of wind'
+    v_nc.long_name = 'northward wind'
     v_nc.units = 'm s-1'
+    v_nc.comments = 'Northward wind, i.e. meridional component of wind'
     w_nc = nc_lidar_new.createVariable('w', np.float32,
                                        ('time', 'height'),
                                        fill_value=-999.0)
-    w_nc.standard_name = 'w-component wind'
-    w_nc.long_name = 'vertical-component away from the surface of wind'
+    w_nc.long_name = 'upward air velocity'
     w_nc.units = 'm s-1'
-
+    w_nc.comments = 'Upward air velocity, i.e. wind component away from ' \
+                    'surface'
     covariance_matrix_nc = nc_lidar_new.createVariable(
-        'covariance_matrix', np.float32, ('time', 'height', "rows", "cols"),
+        'covariances', np.float32, ('time', 'height', "row", "col"),
         fill_value=-999.0)
-    covariance_matrix_nc.standard_name = 'covariance matrix of wind '
-    covariance_matrix_nc.long_name = 'covariance matrix of wind ' \
-                                     'derived with n_ef = ' + str(n_ef)
+    covariance_matrix_nc.long_name = 'covariances of wind'
+    covariance_matrix_nc.comments = 'Covariance matrix of wind vector'
     covariance_matrix_nc.units = 'm^2 s^-2'
-    abs_vh_nc = nc_lidar_new.createVariable('abs_vh', np.float32,
+    abs_vh_nc = nc_lidar_new.createVariable('wspeed', np.float32,
                                             ('time', 'height'),
                                             fill_value=-999.0)
-    abs_vh_nc.standard_name = 'absolute horizontal wind'
-    abs_vh_nc.long_name = 'absolute horizontal wind'
+    abs_vh_nc.long_name = 'wind speed'
     abs_vh_nc.units = 'm s-1'
-    vh_dir_nc = nc_lidar_new.createVariable('vh_dir', np.float32,
+    abs_vh_nc.comments = 'Absolute horizontal wind speed'
+    vh_dir_nc = nc_lidar_new.createVariable('wdir', np.float32,
                                             ('time', 'height'),
                                             fill_value=-999.0)
-    vh_dir_nc.standard_name = 'direction of horizontal wind'
-    vh_dir_nc.long_name = 'direction of horizontal wind'
+    vh_dir_nc.long_name = 'wind direction'
     vh_dir_nc.units = '°'
-    sd_abs_vh_nc = nc_lidar_new.createVariable('sd_abs_vh', np.float32,
+    vh_dir_nc.comments = 'Wind from North = 0°, from East = 90°, asf.'
+    sd_abs_vh_nc = nc_lidar_new.createVariable('sd_wspeed', np.float32,
                                                ('time', 'height'),
                                                fill_value=-999.0)
-    sd_abs_vh_nc.standard_name = 'sd of abs_vh'
-    sd_abs_vh_nc.long_name = 'standard deviation of absolute horizontal wind'
+    sd_abs_vh_nc.long_name = 'standard deviation of wind speed'
     sd_abs_vh_nc.units = 'm s-1'
-    sd_abs_vh_nc.comments = 'derived from covariance matrix'
+    sd_abs_vh_nc.comments = 'Standard deviation of wind speed derived from ' \
+                            'the covariance matrix'
     nvrad_nc = nc_lidar_new.createVariable('nvrad', np.float32,
                                            ('time', 'height'),
                                            fill_value=-999.0)
-    nvrad_nc.standard_name = 'number of radial velocities'
-    nvrad_nc.long_name = ('number of radial velocities that contribute to '
-                          'retrieved wind vector')
+    nvrad_nc.long_name = 'number of radial velocities'
     nvrad_nc.units = '1'
+    nvrad_nc.comments = 'Number of involved radial velocities in the ' \
+                      'wind vector fit'
     r2_nc = nc_lidar_new.createVariable('r2', np.float32,
                                         ('time', 'height'),
                                         fill_value=-999.0)
-    r2_nc.standard_name = 'coefficient of determination'
-    r2_nc.long_name = 'Pearsons coefficient of determination of the uvw fit'
+    r2_nc.long_name = 'coefficient of determination'
     r2_nc.units = '1'
+    r2_nc.comments = 'Pearsons coefficient of determination ' \
+                     'calculated for the wind vector fit'
     cn_nc = nc_lidar_new.createVariable('cn', np.float32,
                                         ('time', 'height'),
                                         fill_value=-999.0)
-    cn_nc.standard_name = 'Condition number'
-    cn_nc.long_name = 'Condition number of A*diag((A^T*A)^(-1/2))'
+    cn_nc.long_name = 'condition number'
     cn_nc.units = '1'
+    cn_nc.comments = 'Condition number of wind vector fit'
     time_bnds_nc = nc_lidar_new.createVariable('time_bnds', np.float64,
                                                ('time', 'nv'),
                                                fill_value=-999.0)
+    time_bnds_nc.long_name = 'time boundaries'
     time_bnds_nc.units = 'seconds since 1970-01 00:00:00'
     i_h_new = np.repeat(-999, heights.size)
     for i in range(heights.size):
@@ -1094,6 +1186,25 @@ def uvw2_time_series_netcdf(nc_file_in, path_folder_in, path_folder_out,
             nvrad_nc[i_t, i_h_new] = uvw1['nvrad']
             r2_nc[i_t, i_h_new] = uvw1['r2']
             cn_nc[i_t, i_h_new] = uvw1['cn']
+            if i_t > 0 and nc_lidar_new['time_bnds'][:].data[i_t, 0] < \
+                    nc_lidar_new['time'][:].data[i_t - 1]:
+                nc_lidar_new['time_bnds'][i_t, 0] = \
+                    nc_lidar_new['time'][:].data[i_t]
+            elif nc_lidar_new['time_bnds'][:].data[i_t, 0] > \
+                    nc_lidar_new['time'][:].data[i_t]:
+                nc_lidar_new['time_bnds'][i_t, 0] = \
+                    nc_lidar_new['time'][:].data[i_t]
+
+            if nc_lidar_new['time_bnds'][:].data[i_t, 1] < \
+                    nc_lidar_new['time'][:].data[i_t]:
+                nc_lidar_new['time_bnds'][i_t, 1] = \
+                    nc_lidar_new['time'][:].data[i_t]
+            elif i_t < nc_lidar_new['time'][:].shape[0] - 1 and \
+                    nc_lidar_new['time_bnds'][:].data[i_t, 1] > \
+                    nc_lidar_new['time'][:].data[i_t + 1]:
+                nc_lidar_new['time_bnds'][i_t, 1] = \
+                    nc_lidar_new['time'][:].data[i_t]
+
             print('Process evolution:',
                   str(np.round((i_t + 1) / t_nc.size * 100)),
                   ' % for ', nc_file_out)
@@ -1166,7 +1277,7 @@ def uvw3_retrievals(nc_file_in, path_folder_in, path_folder_out,
 
     name_control = nc_file_in.split('_')
     if not name_control[-1][-3:] == '.nc':
-        wn.warn('Wrong input: The file ' + nc_file_in + ' is no netcdf.')
+        wn.warn('Wrong input: The file ' + nc_file_in + ' is no netcdf')
         return
 
     mode = name_control[name_control.__len__() - 5][4:6]
@@ -1175,6 +1286,7 @@ def uvw3_retrievals(nc_file_in, path_folder_in, path_folder_out,
                 'PPI or RHI scanning mode and this retrieval is not ' +
                 'applicable')
         return
+
     if not nc_name_check_level(nc_file_in) == 1:
         wn.warn('Wrong input: The file ' + nc_file_in + ' is not of level 1')
         return
@@ -1213,7 +1325,7 @@ def uvw3_retrievals(nc_file_in, path_folder_in, path_folder_out,
             print(e, file=open(path_folder_out + 'ERROR_' +
                                nc_file_out[0:-3] + '.txt', 'w+'))
             wn.warn('Error: Some error occurred while proceeding ' +
-                    'with circularily' + nc_file_in + 'and circulation')
+                    'with circularily ' + nc_file_in + ' and circulation')
     else:
         if np.isnan(duration):
             return
@@ -1229,6 +1341,7 @@ def uvw3_retrievals(nc_file_in, path_folder_in, path_folder_out,
                 nc_lidar=nc_lidar,
                 heights=heights_fix)
             nc_lidar.close()
+
             uvw2_time_series_netcdf(nc_file_in=nc_file_in,
                                     path_folder_in=path_folder_in,
                                     path_folder_out=path_folder_out,
@@ -1247,21 +1360,21 @@ def uvw3_retrievals(nc_file_in, path_folder_in, path_folder_out,
             print(e, file=open(path_folder_out + 'ERROR_' +
                                nc_file_out[0:-3] + '.txt', 'w+'))
             wn.warn('Error: Some mysterious error occurred while proceeding ' +
-                    'with' + nc_file_in + 'and duration' + str(duration) + 's')
+                    'with' + nc_file_in + ' and duration ' + str(duration) + 's')
 
 
-########################################################################
-# STEP C: Wind product                                                 #
-#                                                                      #
-# Create end-product netcdf which contains both 600s winds and 600s    #
-# gust peaks.                                                          #
-########################################################################
+###############################################################################
+# STEP C: Wind product                                                        #
+#                                                                             #
+# Create end-product netcdf which contains both 600s winds and 600s gust      #
+# peaks.                                                                      #
+###############################################################################
 
 
 def wind_and_gust_netcdf(nc_file_in_mean, path_folder_in_mean,
                          nc_file_in_circ, path_folder_in_circ,
                          path_folder_out, circulations_fraction=0.5,
-                         check_exist=True, max_out=1):
+                         check_exist=True, max_out=1, out_str='wind-gust'):
     """ Produce netcdf-files with mean wind and corresponding gust peak
 
     Args:
@@ -1278,22 +1391,23 @@ def wind_and_gust_netcdf(nc_file_in_mean, path_folder_in_mean,
                              at least necessary for the unfiltered gust peak.
       check_exist: If True then approach is canceled when output file is
                    already existing.
-      max_out: Outlier detection: This is theMaximum allowed outlier-distance
+      max_out: Outlier detection: This is the Maximum allowed outlier-distance
                [m/s] in set of uvw-circs compared to next lower (or higher)
                value.
+      out_str: string for SAMD convention following file name.
     Returns:
     """
 
     if not isfile(path_folder_in_mean + nc_file_in_mean):
-        wn.warn(nc_file_in_mean + ' does not exist where you think it is.')
+        wn.warn(nc_file_in_mean + ' does not exist where you think it is')
         return
 
     if not isfile(path_folder_in_circ + nc_file_in_circ):
-        wn.warn(nc_file_in_circ + ' does not exist where you think it is.')
+        wn.warn(nc_file_in_circ + ' does not exist where you think it is')
         return
 
-    nc_file_in_new = nc_name_raise_version(nc_file_in_circ).replace('circ',
-                                                                    'gust')
+    nc_file_in_new = nc_name_raise_version(nc_file_in_circ).replace('wind-circ',
+                                                                    out_str)
     if not isdir(path_folder_out):
         try:
             makedirs(path_folder_out)
@@ -1304,10 +1418,10 @@ def wind_and_gust_netcdf(nc_file_in_mean, path_folder_in_mean,
         if isfile(path_folder_out + nc_file_in_new):
             print('Consider: ' + nc_file_in_new +
                   ' is existing and not again calculated. Please set '
-                  '>check_exist< to FALSE, if recalculation is needed.')
+                  '>check_exist< to FALSE, if recalculation is needed')
             return
 
-    print(nc_file_in_mean + ' to process ...')
+    print(nc_file_in_circ + ' to process for wind gust peaks')
 
     nc_lidar_circ = nc.Dataset(path_folder_in_circ + nc_file_in_circ)
     nc_lidar_mean = nc.Dataset(path_folder_in_mean + nc_file_in_mean)
@@ -1329,9 +1443,7 @@ def wind_and_gust_netcdf(nc_file_in_mean, path_folder_in_mean,
             the_dim))
 
     # variables copy
-    for var in ['focus', 'lat', 'lon', 'lrg', 'nfft', 'npls', 'nqf',
-                'nqv', 'nrg', 'nsmpl', 'pd', 'prf', 'resf', 'resv',
-                'smplf', 'tgint', 'time_bnds', 'wl', 'zsl', 'height_corg']:
+    for var in ['lat', 'lon', 'time_bnds', 'zsl', 'height_corg']:
         try:
             nc_lidar_new.createVariable(var, nc_lidar_mean[var].datatype,
                                         nc_lidar_mean[var].dimensions,
@@ -1345,7 +1457,7 @@ def wind_and_gust_netcdf(nc_file_in_mean, path_folder_in_mean,
             wn.warn(var + ' dictionary could not be copied')
 
     # dim variables copy
-    for var in ['cols', 'rows', 'nv', 'height', 'time']:
+    for var in ['height', 'time']:
         try:
             nc_lidar_new.createVariable(var, nc_lidar_mean[var].datatype,
                                         nc_lidar_mean[var].dimensions)
@@ -1354,57 +1466,46 @@ def wind_and_gust_netcdf(nc_file_in_mean, path_folder_in_mean,
         except:
             wn.warn(var + ' dictionary could not be copied')
 
-    for var in ['abs_vh', 'sd_abs_vh', 'covariance_matrix',
-                'u', 'v', 'w', 'vh_dir']:
-        nc_lidar_new.createVariable(var + '_mean',
-                                    nc_lidar_mean[var].datatype,
+    for var in ['wspeed', 'sd_wspeed', 'covariances',
+                'u', 'v', 'w', 'wdir']:
+        nc_lidar_new.createVariable(var, nc_lidar_mean[var].datatype,
                                     nc_lidar_mean[var].dimensions,
                                     fill_value=-999.0)
         dict_var = nc_lidar_mean[var].__dict__
-        nc_lidar_new[var + '_mean'].setncatts(
+        nc_lidar_new[var].setncatts(
             {k: dict_var[k] for k in dict_var.keys() if not k == '_FillValue'})
-        nc_lidar_new[var + '_mean'][:] = nc_lidar_mean[var][:].data
+        nc_lidar_new[var][:] = nc_lidar_mean[var][:].data
 
-    for var in ['abs_vh', 'sd_abs_vh', 'covariance_matrix',
-                'u', 'v', 'w', 'vh_dir']:
-        nc_lidar_new.createVariable(var + '_gust_peak',
+    for var in ['wspeed', 'sd_wspeed', 'covariances',
+                'u', 'v', 'w', 'wdir']:
+        nc_lidar_new.createVariable(var + '_max',
                                     nc_lidar_mean[var].datatype,
                                     nc_lidar_mean[var].dimensions,
                                     fill_value=-999.0)
         dict_var = nc_lidar_circ[var].__dict__
-        nc_lidar_new[var + '_gust_peak'].setncatts(
+        nc_lidar_new[var + '_max'].setncatts(
             {k: dict_var[k] for k in dict_var.keys() if not k == '_FillValue'})
-        nc_lidar_new[var + '_gust_peak'].standard_name = \
-            nc_lidar_circ[var].standard_name + ' gust peak'
-        nc_lidar_new[var + '_gust_peak'].long_name = \
-            nc_lidar_circ[var].long_name + ' gust peak'
-        nc_lidar_new[var + '_gust_peak'].comments = \
-            'Per time window more than ' + \
-            str(int(np.round(circulations_fraction * 100))) + \
-            '% useful circulation retrievals are necessary for valid values' \
-            ' and outliers deviating >' + str(max_out) + 'are removed.'
+        nc_lidar_new[var + '_max'].long_name = \
+            nc_lidar_circ[var].long_name + ' of gust peak'
+        nc_lidar_new[var + '_max'].comments = \
+            nc_lidar_circ[var].comments + ' of gust peak'
 
-    for var in ['abs_vh', 'sd_abs_vh', 'covariance_matrix',
-                'u', 'v', 'w', 'vh_dir']:
-        nc_lidar_new.createVariable(var + '_gust_minimum',
+    for var in ['wspeed', 'sd_wspeed', 'covariances',
+                'u', 'v', 'w', 'wdir']:
+        nc_lidar_new.createVariable(var + '_min',
                                     nc_lidar_mean[var].datatype,
                                     nc_lidar_mean[var].dimensions,
                                     fill_value=-999.0)
         dict_var = nc_lidar_circ[var].__dict__
-        nc_lidar_new[var + '_gust_minimum'].setncatts(
+        nc_lidar_new[var + '_min'].setncatts(
             {k: dict_var[k] for k in dict_var.keys() if not k == '_FillValue'})
-        nc_lidar_new[var + '_gust_minimum'].standard_name = \
-            nc_lidar_circ[var].standard_name + ' gust minimum'
-        nc_lidar_new[var + '_gust_minimum'].long_name = \
-            nc_lidar_circ[var].long_name + ' gust minimum'
-        nc_lidar_new[var + '_gust_minimum'].comments = \
-            'Per time window more than ' + \
-            str(int(np.round(circulations_fraction * 100))) + \
-            '% useful circulation retrievals are necessary for valid values' \
-            ' and outliers deviating >' + str(max_out) + 'are removed.'
+        nc_lidar_new[var + '_min'].long_name = \
+            nc_lidar_circ[var].long_name + ' of weakest wind'
+        nc_lidar_new[var + '_min'].comments = \
+            nc_lidar_circ[var].comments + ' of weakest wind'
 
-    abs_vh_mean_nc = nc_lidar_mean.variables['abs_vh'][:].data
-    abs_vh_circ_nc = nc_lidar_circ.variables['abs_vh'][:].data
+    abs_vh_mean_nc = nc_lidar_mean.variables['wspeed'][:].data
+    abs_vh_circ_nc = nc_lidar_circ.variables['wspeed'][:].data
     for i_t in range(nc_lidar_new.variables['time'].size):
         # circulation has to be started in window
         i_t_circ_window = (nc_lidar_circ.variables['time_bnds'][:, 0] <=
@@ -1427,7 +1528,7 @@ def wind_and_gust_netcdf(nc_file_in_mean, path_folder_in_mean,
             if circ_frac <= circulations_fraction or sum(i_t_circ_window) < 2:
                 wn.warn('Less than ' +
                         str(int(np.round(circulations_fraction * 100))) +
-                        '% useful circulation retrievals in time window.')
+                        '% useful circulation retrievals in time window')
                 continue
 
             abs_vh_circ_i_t_i_h = abs_vh_circ_nc[i_t_circ_window, i_h]
@@ -1449,30 +1550,34 @@ def wind_and_gust_netcdf(nc_file_in_mean, path_folder_in_mean,
 
             if circ_frac <= circulations_fraction:
                 wn.warn('Less than ' +
-                        str(int(np.round(circulations_fraction * 100))) +
-                        '% useful circulation retrievals in time window.')
+                str(int(np.round(circulations_fraction * 100))) +
+                        '% useful circulation retrievals in time window')
                 continue
 
             max_i_t = max_i_t_s[0]
             min_i_t = min_i_t_s[0]
-            for var in ['abs_vh', 'sd_abs_vh', 'u', 'v', 'w', 'vh_dir']:
-                nc_lidar_new[var + '_gust_peak'][i_t, i_h] = \
+            for var in ['wspeed', 'sd_wspeed', 'u', 'v', 'w', 'wdir']:
+                nc_lidar_new[var + '_max'][i_t, i_h] = \
                     nc_lidar_circ.variables[var][
                         i_t_circ_window, i_h][
                         max_i_t]
-                nc_lidar_new[var + '_gust_minimum'][i_t, i_h] = \
+                nc_lidar_new[var + '_min'][i_t, i_h] = \
                     nc_lidar_circ.variables[var][
                         i_t_circ_window, i_h][
                         min_i_t]
 
-            nc_lidar_new['covariance_matrix_gust_peak'][i_t, i_h, :, :] = \
-                nc_lidar_circ.variables['covariance_matrix'][
+            nc_lidar_new['covariances_max'][i_t, i_h, :, :] = \
+                nc_lidar_circ.variables['covariances'][
                 i_t_circ_window, i_h, :, :][
                 max_i_t, :, :]
-            nc_lidar_new['covariance_matrix_gust_minimum'][i_t, i_h, :, :] = \
-                nc_lidar_circ.variables['covariance_matrix'][
+            nc_lidar_new['covariances_min'][i_t, i_h, :, :] = \
+                nc_lidar_circ.variables['covariances'][
                 i_t_circ_window, i_h, :, :][
                 min_i_t, :, :]
+
+        print('Process evolution:',
+              str(np.round((i_t + 1) / nc_lidar_new.variables['time'].size
+                           * 100)), ' % for ', nc_file_in_new)
 
     nc_lidar_circ.close()
     nc_lidar_mean.close()
@@ -1480,14 +1585,91 @@ def wind_and_gust_netcdf(nc_file_in_mean, path_folder_in_mean,
     system('mv ' + path_folder_out + 'tmp_' + nc_file_in_new + ' ' +
            path_folder_out + nc_file_in_new)
 
+###############################################################################
+# STEP D: w-correction                                                        #
+#                                                                             #
+# w-values from the CSM have an turn-direction-dependent offset, likely the   #
+# velocity of the fast rotation DWL-head, which needs to be corrected for.    #
+###############################################################################
 
-########################################################################
-# STEP D: Quicklooks                                                   #
-#                                                                      #
-# Plot routines for lidar-netcdf's l2 files which contains horizontal  #
-# wind information (u, v) or wind gust information (if gust=True,      #
-# u_gust_peak, v_gust_peak).                                           #
-########################################################################
+def w_correction(nc_file_in, path_folder_in, path_folder_out, check_exist=True,
+                 fh_correction=0.135, hh_correction=-0.135):
+    """ Produce netcdf-files with corrected w-values
+
+    Args:
+      nc_file_in: Filename of nc-file with lidar wind level 2 data located
+                  in path_folder_in.
+      path_folder_in: The path to folder containing the lidar data file
+                      nc_file_in.
+      check_exist: If True then approach is canceled when output file is
+                   already existing.
+      fh_correction: Value to add to w-values in the 30 min after the full
+                     hour (fh), i.e., XX:00 UTC to XX:30 UTC.
+      hh_correction: Value to add to w-values in the 30 min after the half
+                     hour (hh), i.e., XX:30 UTC to XY:00 UTC.
+    Returns:
+    """
+
+    if not isfile(path_folder_in + nc_file_in):
+        wn.warn(nc_file_in + ' does not exist where you think it is')
+        return
+
+    nc_file_out = nc_name_raise_version(nc_file_in)
+    if not isdir(path_folder_out):
+        try:
+            makedirs(path_folder_out)
+        except:
+            wn.warn(path_folder_out + ' simultaniously created!')
+
+    if check_exist:
+        if isfile(path_folder_out + nc_file_out):
+            print('Consider: ' + nc_file_out +
+                  ' is existing and not again calculated. Please set '
+                  '>check_exist< to FALSE, if recalculation is needed')
+            return
+
+    print(nc_file_in + ' to process for w-correction')
+    system('cp ' + path_folder_in + nc_file_in + ' ' + path_folder_out +
+           'tmp_' + nc_file_out)
+    nc_lidar = nc.Dataset(path_folder_out + 'tmp_' + nc_file_out, 'r+')
+    t_nc = nc_lidar['time'][:].data
+    t = [dt.datetime.utcfromtimestamp(ts) for ts in t_nc]
+    t_min = np.array([t[i].minute for i in range(len(t))])
+    i_fh = (t_min < 30)
+    w_nc = nc_lidar['w'][:].data
+    w_nc[i_fh, :] = w_nc[i_fh, :] + fh_correction
+    w_nc[~i_fh, :] = w_nc[~i_fh, :] + hh_correction
+    w_nc[w_nc < -990] = -999.0
+    nc_lidar['w'][:] = w_nc
+    try:
+        w_nc = nc_lidar['w_max'][:].data
+        w_nc[i_fh, :] = w_nc[i_fh, :] + fh_correction
+        w_nc[~i_fh, :] = w_nc[~i_fh, :] + hh_correction
+        w_nc[w_nc < -990] = -999.0
+        nc_lidar['w_max'][:] = w_nc
+        w_nc = nc_lidar['w_min'][:].data
+        w_nc[i_fh, :] = w_nc[i_fh, :] + fh_correction
+        w_nc[~i_fh, :] = w_nc[~i_fh, :] + hh_correction
+        w_nc[w_nc < -990] = -999.0
+        nc_lidar['w_min'][:] = w_nc
+    except:
+            wn.warn(nc_file_in + ' has no w_max and w_min')
+
+
+    nc_lidar.Comments = nc_lidar.Comments + '; halfhourly w-correction is ' \
+                        'done with ' + str(fh_correction) + ' and ' \
+                        + str(hh_correction) + ' m/s.'
+    nc_lidar.close()
+    system('mv ' + path_folder_out + 'tmp_' + nc_file_out + ' ' +
+           path_folder_out + nc_file_out)
+
+###############################################################################
+# STEP E: Quicklooks                                                          #
+#                                                                             #
+# Plot routines for lidar-netcdf's l2 files which contains horizontal wind    #
+# information (u, v) or wind gust information (if gust=True, u_gust_peak,     #
+# v_gust_peak).                                                               #
+###############################################################################
 
 
 def lidar_quicklook(nc_file_in, path_folder_in, path_folder_out,
@@ -1522,7 +1704,7 @@ def lidar_quicklook(nc_file_in, path_folder_in, path_folder_out,
 
     try:
         if not nc_name_check_level(nc_file_in) == 2:
-            wn.warn(nc_file_in + ' is not of level 2.')
+            wn.warn(nc_file_in + ' is not of level 2')
             return
 
         if check_exist:
@@ -1531,7 +1713,7 @@ def lidar_quicklook(nc_file_in, path_folder_in, path_folder_out,
                 print('Consider: ' + name_prefix +
                       nc_file_in[:-3] + '.' + str_out +
                       ' is existing and not again calculated. Please set '
-                      '>check_exist< to FALSE, if recalculation is needed.')
+                      '>check_exist< to FALSE, if recalculation is needed')
                 return
         print('Start: ' + name_prefix +
               nc_file_in[:-3] + '.' + str_out)
@@ -1540,15 +1722,11 @@ def lidar_quicklook(nc_file_in, path_folder_in, path_folder_out,
         t = [datetime.datetime.utcfromtimestamp(ts) for ts in t]
         h = nc_lidar['height'][:].data
         if gust:
-            u = nc_lidar['u_gust_peak'][:].data
-            v = nc_lidar['v_gust_peak'][:].data
+            u = nc_lidar['u_max'][:].data
+            v = nc_lidar['v_max'][:].data
         else:
-            try:
-                u = nc_lidar['u'][:].data
-                v = nc_lidar['v'][:].data
-            except:
-                u = nc_lidar['u_mean'][:].data
-                v = nc_lidar['v_mean'][:].data
+            u = nc_lidar['u'][:].data
+            v = nc_lidar['v'][:].data
         if h_mask:
             u = u[:, nc_lidar['height_corg'][:].data == 1]
             v = v[:, nc_lidar['height_corg'][:].data == 1]
