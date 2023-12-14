@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.10
 """
 This code is used to calculate wind gust peaks as described in:
 
@@ -25,7 +25,6 @@ To test the script with an example day use main_testday.py or
 main_testday_qCSM.py
 """
 
-
 ###############################################################################
 # Julian Steinheuer; November 2021                                            #
 # DWL_retrieval.py                                                            #
@@ -51,7 +50,7 @@ import datetime as dt
 # STEP A: Quality check                                                       #
 #                                                                             #
 # Process lidar-netcdf's l1. The qdv value is set on 0 if SNR (given as       #
-# intensity = 1 + SNR) is not above certain (e.g SNR>-18) threshold.          #
+# intensity = 1 + SNR) is not above certain (e.g. SNR>-18) threshold.         #
 # Further a beta threshold could be set for cloud detection.                  #
 # For quick scanning modi the azimuth tends to shift which can be repaired.   #
 ###############################################################################
@@ -300,7 +299,7 @@ def flag_qdv_of_l1(nc_file_in, path_folder_in='', path_folder_out=None,
                                                  time.gmtime()) + '(UTC)'
         nc_lidar.Author = 'Julian Steinheuer, Julian.Steinheuer@uni-koeln.de'
         t_lidar = nc_lidar['time'][:].data
-        # sometimes time jumps appear for some reasons in l1 data :(
+        # sometimes time jumps appear for some reason in l1 data :(
         if not np.unique(np.sort(t_lidar) == t_lidar)[0]:
             max_time_shift = max(abs(np.sort(t_lidar) - t_lidar))
             counter = 0
@@ -581,19 +580,19 @@ def lin_inter_pol_dv(DV, zenith, m_range, heights):
         raise_i = [([np.nan, np.nan])]
         while len(raise_i[0]) and max(index) < len(m_range):
             raise_i = np.where(heights_dv[(np.array(range(len(zenith)))),
-                                          index] < heights[a])
+            index] < heights[a])
             index[raise_i] = index[raise_i] + 1
 
         index_below_top = np.where(index < len(m_range))[0]
         if len(index_below_top) > 0 and heights[a] >= np.min(heights_dv):
             x1 = heights_dv[(np.array(range(len(index_below_top)))),
-                            index[index_below_top] - 1]
+            index[index_below_top] - 1]
             x2 = heights_dv[(np.array(range(len(index_below_top)))),
-                            index[index_below_top]]
+            index[index_below_top]]
             dv1 = DV[(np.array(range(len(index_below_top)))),
-                     index[index_below_top] - 1]
+            index[index_below_top] - 1]
             dv2 = DV[(np.array(range(len(index_below_top)))),
-                     index[index_below_top]]
+            index[index_below_top]]
             DV_ip[index_below_top, a] = lin_in(x1, x2, dv1, dv2, heights[a])
 
     return DV_ip
@@ -669,7 +668,7 @@ def uvw1_retrieval_vertical(nc_lidar, i_t_start, i_t_end, heights,
                               lowest_frac=lowest_frac,
                               highest_allowed_sigma=highest_allowed_sigma,
                               iteration_stopping_sigma=
-                              iteration_stopping_sigma,n_ef=n_ef, nqv=nqv)
+                              iteration_stopping_sigma, n_ef=n_ef, nqv=nqv)
         u1[i_h] = uvw0['uvw'][0]
         v1[i_h] = uvw0['uvw'][1]
         w1[i_h] = uvw0['uvw'][2]
@@ -926,7 +925,8 @@ def uvw2_time_series_netcdf(nc_file_in, path_folder_in, path_folder_out,
         nc_lidar_new.Contact_person = 'Dr. Julian Steinheuer, ' \
                                       'Julian.Steinheuer@uni-koeln.de'
 
-    if 'instrument_type' in nc_lidar.__dict__ and 'instrument_mode' in nc_lidar.__dict__:
+    if ('instrument_type' in nc_lidar.__dict__ and 'instrument_mode' in
+            nc_lidar.__dict__):
         nc_lidar_new.Source = 'Ground based remote sensing by a ' + \
                               nc_lidar.instrument_type + ' in ' + \
                               nc_lidar.instrument_mode + \
@@ -1023,12 +1023,10 @@ def uvw2_time_series_netcdf(nc_file_in, path_folder_in, path_folder_out,
     nc_lidar_new[var].units = 'm'
     nc_lidar_new[var][:] = nc_lidar[var][:].data
 
-
-
     # for var in ['lat', 'lon', 'zsl']:
     # # for var in ['focus', 'lat', 'lon', 'lrg', 'nfft', 'npls', 'nqf', 'nqv',
-    # #             'nrg', 'nsmpl', 'pd', 'prf', 'resf', 'resv', 'smplf', 'tgint',
-    # #             'wl', 'zsl']:
+    # #             'nrg', 'nsmpl', 'pd', 'prf', 'resf', 'resv', 'smplf',
+    # #             'tgint', 'wl', 'zsl']:
     #     try:
     #         nc_lidar_new.createVariable(var, nc_lidar[var].datatype,
     #                                     nc_lidar[var].dimensions,
@@ -1092,7 +1090,7 @@ def uvw2_time_series_netcdf(nc_file_in, path_folder_in, path_folder_out,
     nvrad_nc.long_name = 'number of radial velocities'
     nvrad_nc.units = '1'
     nvrad_nc.comments = 'Number of involved radial velocities in the ' \
-                      'wind vector fit'
+                        'wind vector fit'
     r2_nc = nc_lidar_new.createVariable('r2', np.float32,
                                         ('time', 'height'),
                                         fill_value=-999.0)
@@ -1360,7 +1358,8 @@ def uvw3_retrievals(nc_file_in, path_folder_in, path_folder_out,
             print(e, file=open(path_folder_out + 'ERROR_' +
                                nc_file_out[0:-3] + '.txt', 'w+'))
             wn.warn('Error: Some mysterious error occurred while proceeding ' +
-                    'with' + nc_file_in + ' and duration ' + str(duration) + 's')
+                    'with' + nc_file_in + ' and duration ' +
+                    str(duration) + 's')
 
 
 ###############################################################################
@@ -1406,8 +1405,9 @@ def wind_and_gust_netcdf(nc_file_in_mean, path_folder_in_mean,
         wn.warn(nc_file_in_circ + ' does not exist where you think it is')
         return
 
-    nc_file_in_new = nc_name_raise_version(nc_file_in_circ).replace('wind-circ',
-                                                                    out_str)
+    nc_file_in_new = nc_name_raise_version(nc_file_in_circ).replace(
+        'wind-circ',
+        out_str)
     if not isdir(path_folder_out):
         try:
             makedirs(path_folder_out)
@@ -1550,7 +1550,7 @@ def wind_and_gust_netcdf(nc_file_in_mean, path_folder_in_mean,
 
             if circ_frac <= circulations_fraction:
                 wn.warn('Less than ' +
-                str(int(np.round(circulations_fraction * 100))) +
+                        str(int(np.round(circulations_fraction * 100))) +
                         '% useful circulation retrievals in time window')
                 continue
 
@@ -1585,12 +1585,14 @@ def wind_and_gust_netcdf(nc_file_in_mean, path_folder_in_mean,
     system('mv ' + path_folder_out + 'tmp_' + nc_file_in_new + ' ' +
            path_folder_out + nc_file_in_new)
 
+
 ###############################################################################
 # STEP D: w-correction                                                        #
 #                                                                             #
-# w-values from the CSM have an turn-direction-dependent offset, likely the   #
+# w-values from the CSM have a turn-direction-dependent offset, likely the   #
 # velocity of the fast rotation DWL-head, which needs to be corrected for.    #
 ###############################################################################
+
 
 def w_correction(nc_file_in, path_folder_in, path_folder_out, check_exist=True,
                  fh_correction=0.135, hh_correction=-0.135):
@@ -1653,15 +1655,16 @@ def w_correction(nc_file_in, path_folder_in, path_folder_out, check_exist=True,
         w_nc[w_nc < -990] = -999.0
         nc_lidar['w_min'][:] = w_nc
     except:
-            wn.warn(nc_file_in + ' has no w_max and w_min')
+        wn.warn(nc_file_in + ' has no w_max and w_min')
 
-
-    nc_lidar.Comments = nc_lidar.Comments + '; halfhourly w-correction is ' \
-                        'done with ' + str(fh_correction) + ' and ' \
-                        + str(hh_correction) + ' m/s.'
+    nc_lidar.Comments = (nc_lidar.Comments +
+                         '; halfhourly w-correction is done with ' +
+                         str(fh_correction) + ' and ' +
+                         str(hh_correction) + ' m/s.')
     nc_lidar.close()
     system('mv ' + path_folder_out + 'tmp_' + nc_file_out + ' ' +
            path_folder_out + nc_file_out)
+
 
 ###############################################################################
 # STEP E: Quicklooks                                                          #

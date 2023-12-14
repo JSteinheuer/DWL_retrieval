@@ -118,7 +118,6 @@ for nc_file_in, path_folder_in, path_folder_out in zip(nc_files_in,
                                                        path_folders_in,
                                                        path_folders_out):
     if nc_file_in.split('_')[-3][0:9] == 'wind-gust':
-        lidar_quicklook(nc_file_in, path_folder_in,path_folder_out, gust=True)
+        lidar_quicklook(nc_file_in, path_folder_in, path_folder_out, gust=True)
     else:
         lidar_quicklook(nc_file_in, path_folder_in, path_folder_out)
-

@@ -25,7 +25,7 @@ To test the script with an example day use main_testday.py or
 main_testday_qCSM.py
 
 The 29th June 2021 in quck continuous scanning mode is too big for git, so
-  please downlaad here: https://doi.org/10.25592/uhhfdm.11227, i.e.,
+  please download here: https://doi.org/10.25592/uhhfdm.11227, i.e.,
   the example is: https://icdc.cen.uni-hamburg.de/thredds/catalog/ftpthredds/fesstval/wind_and_gust/falkenberg_dlidcsm/level1/csm02/2021/catalog.html?dataset=ftpthreddsscan/fesstval/wind_and_gust/falkenberg_dlidcsm/level1/csm02/2021/sups_rao_dlidCSM02_l1_any_v00_20210629.nc
 """
 
@@ -125,7 +125,7 @@ for nc_file_in, path_folder_in, path_folder_out in zip(nc_files_in,
                                                        path_folders_in,
                                                        path_folders_out):
     if nc_file_in.split('_')[-3][0:9] == 'wind-gust':
-        lidar_quicklook(nc_file_in, path_folder_in,path_folder_out, gust=True)
+        lidar_quicklook(nc_file_in, path_folder_in, path_folder_out, gust=True)
     else:
         lidar_quicklook(nc_file_in, path_folder_in, path_folder_out)
 
