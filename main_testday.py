@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.10
 """
 This code is used to calculate wind gust peaks as described in:
 
